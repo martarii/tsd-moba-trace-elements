@@ -2,6 +2,7 @@ library(data.table)
 library(foreign)
 library(stringr)
 library(dplyr)
+library(RNOmni)
 
 #Output file path/name
 outname <- ""
@@ -31,11 +32,11 @@ trace_elements = trace_elements[!duplicated(trace_elements$M_ID_2944),]
 MoBa_mother <- read.spss(KeyFile,to.data.frame=T)
 
 MoBa_mother$SENTRIX_ID <- str_replace_all(string=MoBa_mother$SENTRIX_ID,pattern=" ",repl="")
-MoBa_mother$SENTRIX_ID <- str_replace_all(string=MoBa_mother$SENTRIX_ID,pattern=\t",repl="")
+MoBa_mother$SENTRIX_ID <- str_replace_all(string=MoBa_mother$SENTRIX_ID,pattern="\t",repl="")
 MoBa_mother$M_ID_2944 <- str_replace_all(string=MoBa_mother$M_ID_2944,pattern=" ",repl="")
-MoBa_mother$M_ID_2944 <- str_replace_all(string=MoBa_mother$M_ID_2944,pattern=\t",repl="")
+MoBa_mother$M_ID_2944 <- str_replace_all(string=MoBa_mother$M_ID_2944,pattern="\t",repl="")
 MoBa_mother$BATCH <- str_replace_all(string=MoBa_mother$BATCH,pattern=" ",repl="")
-MoBa_mother$BATCH <- str_replace_all(string=MoBa_mother$BATCH,pattern=\t",repl="")
+MoBa_mother$BATCH <- str_replace_all(string=MoBa_mother$BATCH,pattern="\t",repl="")
 
 #Select HARVEST batch (7 individuals from other batches are excluded)
 MoBa <- MoBa_mother[MoBa_mother$BATCH=="HARVEST",]
@@ -48,7 +49,16 @@ tmp2 <- merge(trace_elements,tmp1,by="M_ID_2944",all=F)
 tmp2$MATID <- 0
 tmp2$PATID <- 0
 
-#Final output
-pheno <- tmp2[,c("FID","IID","MATID","PATID","Mn_Mangan","Co_Kobolt","Cu_Kopper","Zn_Sink","As_Arsen","Se_Selen","Mo_Molybdeno","Cd_Kadmium","Tl_Tallium","Pb_Bly","Hg_total","AgeSample","PC1","PC2","PC3","PC4","PC5","PC6","PC7","PC8","PC9","PC10")]
+Mn_pheno <- tmp2[,c("FID","IID","MATID","PATID","Mn_Mangan","AgeSample")]
+Mn_pheno <- na.omit(Mn_pheno)
+regr <- lm(Mn_Mangan~AgeSample,Mn_pheno)
+residuals <- resid(regr)
+Mn_pheno$Mn.rn <- RankNorm(residuals)
 
-write.table(pheno,outname,quote=F,col.names=T,row.names=F)
+covars <- tmp2[,c("FID","IID","MATID","PATID","AgeSample","PC1","PC2","PC3","PC4","PC5","PC6","PC7","PC8","PC9","PC10")]
+write.table(Mn_pheno[,c(1,2,3,4,7)],outname,quote=F,col.names=T,row.names=F,sep="\t") #Need to repeat this for all trace elements
+write.table(covars,"moba_trace_element_covars.txt",quote=F,col.names=T,row.names=F,sep="\t")
+#Final output
+#pheno <- tmp2[,c("FID","IID","MATID","PATID","Mn_Mangan","Co_Kobolt","Cu_Kopper","Zn_Sink","As_Arsen","Se_Selen","Mo_Molybdeno","Cd_Kadmium","Tl_Tallium","Pb_Bly","Hg_total","AgeSample","PC1","PC2","PC3","PC4","PC5","PC6","PC7","PC8","PC9","PC10")]
+
+#write.table(pheno,outname,quote=F,col.names=T,row.names=F)
